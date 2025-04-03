@@ -564,11 +564,31 @@ def generate_transaction_dates(df):
 
 def save_dataset():
     """Generate and save the Tunisia housing dataset"""
-    if not os.path.exists(DATA_DIR):
-        os.makedirs(DATA_DIR)
+    # Check multiple possible data directory locations
+    # First try the deployment environment path
+    possible_data_dirs = [
+        DATA_DIR,  # From config
+        os.path.join('/mount/src/ml-project', 'data'),  # Deployment environment
+        os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'data')  # Local absolute path
+    ]
+    
+    # Create data directory if it doesn't exist
+    data_dir = None
+    for dir_path in possible_data_dirs:
+        try:
+            os.makedirs(dir_path, exist_ok=True)
+            print(f"Successfully created/verified data directory at: {dir_path}")
+            data_dir = dir_path
+            break
+        except Exception as e:
+            print(f"Warning: Could not create data directory at {dir_path}: {e}")
+    
+    if data_dir is None:
+        print("Error: Could not create any data directory, using current directory")
+        data_dir = "."
     
     # Define custom dataset path for the dataset
-    dataset_path = os.path.join(DATA_DIR, "tunisia_housing_10k.csv")
+    dataset_path = os.path.join(data_dir, "tunisia_housing_10k.csv")
     
     print("Generating Tunisia housing dataset with 10,000 properties...")
     df = generate_tunisia_housing_data(10000, batch_size=5000)
@@ -596,6 +616,8 @@ def save_dataset():
     df.loc[small_apt_mask & (df['bedrooms'] > 1), 'bedrooms'] = 1
     
     print(f"Saving dataset to {dataset_path}...")
+    # Create parent directories if they don't exist (additional safety)
+    os.makedirs(os.path.dirname(dataset_path), exist_ok=True)
     df.to_csv(dataset_path, index=False)
     
     print(f"Dataset saved successfully!")
@@ -623,25 +645,59 @@ def save_dataset():
     correlations = df[numeric_cols].corr()['price'].sort_values(ascending=False)
     print(correlations)
     
+    # Save a copy to deployment path if in that environment
+    deployment_path = os.path.join('/mount/src/ml-project/data', "tunisia_housing_10k.csv")
+    if DATA_DIR != '/mount/src/ml-project/data' and os.path.exists('/mount/src'):
+        try:
+            os.makedirs(os.path.dirname(deployment_path), exist_ok=True)
+            df.to_csv(deployment_path, index=False)
+            print(f"Also saved dataset to deployment path: {deployment_path}")
+        except Exception as e:
+            print(f"Note: Could not save to deployment path {deployment_path}: {e}")
+    
     # Update the original dataset path to point to this new file
     print("\nUpdating config to use the new dataset...")
     try:
-        with open(os.path.join("src", "config.py"), 'r') as f:
-            config_content = f.read()
+        # First try the config in the current directory
+        config_paths = [
+            os.path.join("src", "config.py"),  # Local relative path
+            os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.py"),  # Current directory
+            os.path.join('/mount/src/ml-project/src', "config.py")  # Deployment path
+        ]
         
-        # Update the dataset path
-        if "DATASET_PATH" in config_content:
-            config_content = config_content.replace(
-                'DATASET_PATH = DATA_DIR / "tunisia_housing_100k.csv"',
-                'DATASET_PATH = DATA_DIR / "tunisia_housing_10k.csv"'
-            )
+        updated = False
+        for config_path in config_paths:
+            if os.path.exists(config_path):
+                with open(config_path, 'r') as f:
+                    config_content = f.read()
+                
+                # Update the dataset path - check different potential patterns
+                patterns = [
+                    'DATASET_PATH = DATA_DIR / "tunisia_housing.csv"',
+                    'DATASET_PATH = DATA_DIR / "tunisia_housing_100k.csv"'
+                ]
+                
+                for pattern in patterns:
+                    if pattern in config_content:
+                        config_content = config_content.replace(
+                            pattern,
+                            'DATASET_PATH = DATA_DIR / "tunisia_housing_10k.csv"'
+                        )
+                        updated = True
+                
+                # If we found and updated a pattern
+                if updated:
+                    with open(config_path, 'w') as f:
+                        f.write(config_content)
+                    
+                    print(f"Config updated successfully at {config_path}!")
+                    break
+                else:
+                    print(f"Could not find DATASET_PATH patterns in {config_path}. Please update manually.")
+        
+        if not updated:
+            print("Could not update any config file. Please update DATASET_PATH manually.")
             
-            with open(os.path.join("src", "config.py"), 'w') as f:
-                f.write(config_content)
-            
-            print("Config updated successfully!")
-        else:
-            print("Could not find DATASET_PATH in config.py. Please update manually.")
     except Exception as e:
         print(f"Error updating config: {e}")
 

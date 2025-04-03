@@ -1,13 +1,38 @@
 import os
 from pathlib import Path
 
-# Project structure
-BASE_DIR = Path(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-DATA_DIR = BASE_DIR / "data"
-MODELS_DIR = BASE_DIR / "models"
+# Determine base directory based on environment
+# In deployment, the data directory might be at '/mount/src/ml-project/data'
+if os.path.exists('/mount/src/ml-project'):
+    BASE_DIR = Path('/mount/src/ml-project')
+else:
+    # Local development path
+    BASE_DIR = Path(__file__).resolve().parent.parent
 
-# Dataset
-DATASET_PATH = DATA_DIR / "tunisia_housing_10k.csv"
+# Create data directory if it doesn't exist
+DATA_DIR = BASE_DIR / "data"
+os.makedirs(DATA_DIR, exist_ok=True)
+
+# Dataset file options in priority order
+DATASET_OPTIONS = [
+    DATA_DIR / "tunisia_housing_10k.csv",
+    DATA_DIR / "tunisia_housing.csv",
+    # Add more fallback options if needed
+]
+
+# Try to find an existing dataset file
+DATASET_PATH = None
+for dataset_option in DATASET_OPTIONS:
+    if dataset_option.exists():
+        DATASET_PATH = dataset_option
+        break
+
+# If no dataset found, default to the 10k version (which will need to be generated)
+if DATASET_PATH is None:
+    DATASET_PATH = DATA_DIR / "tunisia_housing_10k.csv"
+
+# Project structure
+MODELS_DIR = BASE_DIR / "models"
 
 # Models
 LINEAR_REGRESSION_PATH = MODELS_DIR / "linear_regression.pkl"

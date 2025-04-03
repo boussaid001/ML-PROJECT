@@ -79,7 +79,34 @@ if 'logged_in' not in st.session_state:
 # Load data
 @st.cache_data
 def get_data():
-    return load_data()
+    try:
+        return load_data()
+    except FileNotFoundError as e:
+        # Get the dataset path that caused the error
+        missing_path = str(e).split("No such file or directory: ")[-1].strip("'")
+        st.error(f"Error loading dataset: {e}")
+        
+        # Provide clear instructions based on the environment
+        if '/mount/src/' in missing_path:
+            st.error("""
+            ### Dataset not found in deployment environment
+            
+            To fix this issue:
+            1. **Generate the dataset directly in the deployment environment** by clicking the 'Generate Data & Train Models' button below
+            2. Or upload a pre-generated dataset file to the `/mount/src/ml-project/data/` directory
+            
+            The application will automatically use the dataset once it's available.
+            """)
+        else:
+            st.error("""
+            ### Dataset not found
+            
+            Run the following command to generate the dataset:
+            ```
+            python src/generate_tunisia_data.py
+            ```
+            """)
+        return None
 
 # Load models
 @st.cache_resource
@@ -92,8 +119,15 @@ def get_models():
     return {name: model for name, model in models.items() if model is not None}
 
 # Initialize data and models
-df = get_data()
-models = get_models()
+try:
+    df = get_data()
+    if df is None:
+        df = pd.DataFrame()  # Empty dataframe as fallback
+    models = get_models()
+except Exception as e:
+    st.error(f"Error: {e}")
+    df = pd.DataFrame()  # Empty dataframe as fallback
+    models = {}
 
 # Modern header with clean design
 st.markdown("""
@@ -138,19 +172,25 @@ section[data-testid="stSidebar"] div.element-container:first-child {
 sidebar = SidebarComponent()
 selected = sidebar.render()
 
-# Check if models are already trained
-if not models:
+# Check if models are already trained or if dataset is missing
+if not models or df.empty:
     # Styled warning message
     st.markdown("""
     <div style="background-color: #FFF3CD; padding: 15px; border-radius: 10px; margin-bottom: 20px; border-left: 5px solid #F8B400;">
-        <p style="margin: 0; color: #856404; font-weight: 600;">Models not found</p>
-        <p style="margin: 5px 0 0 0; color: #856404;">Please train models using the button below.</p>
+        <p style="margin: 0; color: #856404; font-weight: 600;">Dataset or Models not found</p>
+        <p style="margin: 5px 0 0 0; color: #856404;">Please generate data and train models using the button below.</p>
     </div>
     """, unsafe_allow_html=True)
 
     if st.button("Generate Data & Train Models", type="primary"):
         with st.spinner("Generating data and training models... This may take a few minutes."):
             import subprocess
+            import os
+            from pathlib import Path
+            
+            # Make sure the data directory exists
+            data_dir = Path(__file__).parent.parent / "data"
+            os.makedirs(data_dir, exist_ok=True)
             
             # First generate the data
             st.info("Step 1: Generating Tunisia housing dataset...")
@@ -176,8 +216,10 @@ if not models:
                     st.experimental_rerun()
                 else:
                     st.error(f"Error training models: {train_result.stderr}")
+                    st.code(train_result.stderr)
             else:
                 st.error(f"Error generating dataset: {gen_result.stderr}")
+                st.code(gen_result.stderr)
 
 # Initialize page instances
 login_page = LoginPage()

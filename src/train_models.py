@@ -299,8 +299,23 @@ def visualize_results(results, df, feature_importances=None):
     print(f"\nVisualization plots saved in {plots_dir}")
 
 def main():
-    """Main function to run the entire training process"""
+    """Main function to execute the model training process"""
     print("Starting model training process...")
+    
+    # Ensure models directory exists
+    models_dirs = [
+        MODELS_DIR,  # From config
+        os.path.join('/mount/src/ml-project', 'models'),  # Deployment environment
+        os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'models')  # Local absolute path
+    ]
+    
+    # Create models directory if it doesn't exist
+    for dir_path in models_dirs:
+        try:
+            os.makedirs(dir_path, exist_ok=True)
+            print(f"Successfully created/verified models directory at: {dir_path}")
+        except Exception as e:
+            print(f"Warning: Could not create models directory at {dir_path}: {e}")
     
     # Load and prepare data
     X_train, X_test, y_train, y_test, df = load_and_prepare_data()
@@ -311,7 +326,21 @@ def main():
     # Visualize results
     visualize_results(results, df, feature_importances)
     
-    print("\nModel training completed successfully!")
+    # Deploy models in case of deployment environment
+    deployment_models_dir = os.path.join('/mount/src/ml-project', 'models')
+    if MODELS_DIR != deployment_models_dir and os.path.exists('/mount/src'):
+        try:
+            os.makedirs(deployment_models_dir, exist_ok=True)
+            # Copy all trained models to deployment path
+            for model_name, model in models.items():
+                filename = f"{model_name.lower().replace(' ', '_')}.pkl"
+                deployment_path = os.path.join(deployment_models_dir, filename)
+                joblib.dump(model, deployment_path)
+                print(f"Saved model to deployment path: {deployment_path}")
+        except Exception as e:
+            print(f"Note: Could not save models to deployment path {deployment_models_dir}: {e}")
+    
+    print("Model training completed successfully!")
 
 if __name__ == "__main__":
     main()

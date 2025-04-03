@@ -28,9 +28,27 @@ from config import (
 def load_data():
     """Load the housing dataset"""
     try:
+        if not os.path.exists(DATASET_PATH):
+            # Provide specific error for missing dataset
+            base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            error_msg = f"[Errno 2] No such file or directory: '{DATASET_PATH}'"
+            
+            # Log additional debug info
+            print(f"Current directory: {os.getcwd()}")
+            print(f"Trying to load dataset from: {DATASET_PATH}")
+            print(f"Base directory: {base_dir}")
+            print(f"Available files in data directory: {os.listdir(os.path.dirname(DATASET_PATH)) if os.path.exists(os.path.dirname(DATASET_PATH)) else 'data directory not found'}")
+            
+            raise FileNotFoundError(error_msg)
+            
         df = pd.read_csv(DATASET_PATH)
+        print(f"Successfully loaded dataset from {DATASET_PATH} with shape {df.shape}")
         return df
+    except FileNotFoundError as e:
+        # Re-raise to be handled by the calling function
+        raise
     except Exception as e:
+        print(f"Error loading dataset: {e}")
         st.error(f"Error loading dataset: {e}")
         return None
 
