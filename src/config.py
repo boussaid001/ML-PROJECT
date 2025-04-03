@@ -5,10 +5,9 @@ from pathlib import Path
 BASE_DIR = Path(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 DATA_DIR = BASE_DIR / "data"
 MODELS_DIR = BASE_DIR / "models"
-STATIC_DIR = BASE_DIR / "static"
 
 # Dataset
-DATASET_PATH = DATA_DIR / "tunisia_housing.csv"
+DATASET_PATH = DATA_DIR / "tunisia_housing_10k.csv"
 
 # Models
 LINEAR_REGRESSION_PATH = MODELS_DIR / "linear_regression.pkl"
@@ -39,13 +38,8 @@ NUMERICAL_FEATURES = [
     "bathrooms", "distance_to_center", "floor"
 ]
 CATEGORICAL_FEATURES = ["region", "property_type"]
-BOOLEAN_FEATURES = ["has_elevator", "has_garden", "has_parking"]
 TARGET = "price"
 
-# Streamlit theme - Tunisia flag colors
-THEME_COLOR_PRIMARY = "#E41E25"  # Red from Tunisia flag
-THEME_COLOR_SECONDARY = "#FFFFFF"  # White from Tunisia flag
-THEME_BACKGROUND = "#F5F5F5"
-THEME_TEXT = "#333333"
+# Streamlit page settings
 PAGE_TITLE = "Tunisia House Price Prediction"
 PAGE_ICON = "🏠"

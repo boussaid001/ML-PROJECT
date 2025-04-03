@@ -1,0 +1,23 @@
+"""
+Tunisia Housing Analytics - Page Classes
+
+This package provides all page classes used in the Tunisia Housing Analytics application.
+Each page is represented by a class that inherits from BasePage.
+"""
+
+__version__ = '1.0.0'
+
+# No need to export anything from this package 
+# Individual pages will be imported directly from their modules
+__all__ = []
+
+from .BasePage import BasePage
+from .LoginPage import LoginPage
+from .RegisterPage import RegisterPage
+from .ProfilePage import ProfilePage
+from .ExploreMarketPage import ExploreMarketPage
+from .RegionalAnalysisPage import RegionalAnalysisPage
+from .PredictionPage import PredictionPage
+from .AboutPage import AboutPage
+from .LogoutPage import LogoutPage
+from .SidebarComponent import SidebarComponent 

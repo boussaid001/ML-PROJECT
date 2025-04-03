@@ -1,6 +1,4 @@
 import bcrypt
-import jwt
-from datetime import datetime, timedelta
 from database import get_database_connection
 import os
 from dotenv import load_dotenv
@@ -58,18 +56,8 @@ def login_user(username, password):
         if not bcrypt.checkpw(password.encode('utf-8'), user['password'].encode('utf-8')):
             return False, "Invalid password"
         
-        # Generate JWT token
-        token = jwt.encode(
-            {
-                'user_id': user['id'],
-                'username': user['username'],
-                'exp': datetime.utcnow() + timedelta(days=1)
-            },
-            os.getenv('SECRET_KEY'),
-            algorithm='HS256'
-        )
-        
-        return True, token
+        # Return user ID directly
+        return True, user['id']
     
     except Exception as e:
         return False, f"Login failed: {str(e)}"
@@ -78,11 +66,21 @@ def login_user(username, password):
             cursor.close()
             connection.close()
 
-def verify_token(token):
+# Simple function to verify if user is authenticated (for API routes if needed)
+def is_authenticated(username, user_id):
+    connection = get_database_connection()
+    if connection is None:
+        return False
+    
     try:
-        payload = jwt.decode(token, os.getenv('SECRET_KEY'), algorithms=['HS256'])
-        return True, payload
-    except jwt.ExpiredSignatureError:
-        return False, "Token has expired"
-    except jwt.InvalidTokenError:
-        return False, "Invalid token" 
+        cursor = connection.cursor()
+        cursor.execute("SELECT * FROM users WHERE username = %s AND id = %s", (username, user_id))
+        user = cursor.fetchone()
+        return user is not None
+    
+    except Exception:
+        return False
+    finally:
+        if connection.is_connected():
+            cursor.close()
+            connection.close() 
